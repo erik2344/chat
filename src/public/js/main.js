@@ -1,82 +1,88 @@
-$(function(){
-    const socket=io();
-    var nick='';
+$(function() {
+    const socket = io();
+    var nick = '';
+    const colors = ['#ff0000', '#00ff00', '#0000ff', '#ff00ff', '#00ffff', '#ffff00', '#ff8000', '#8000ff'];
+    const userColors = {};
 
+    // Función para obtener un color aleatorio de la lista
+    function getRandomColor() {
+        return colors[Math.floor(Math.random() * colors.length)];
+    }
 
-    //acceder a los elementos del DOM
+    // Obtener el color del usuario o generar uno nuevo si no existe
+    function getUserColor(username) {
+        if (userColors.hasOwnProperty(username)) {
+            return userColors[username];
+        } else {
+            const color = getRandomColor();
+            userColors[username] = color;
+            return color;
+        }
+    }
 
-    const messageForm=$('#message-form');
-    const messageBox=$('#message');
-    const chat=$('#chat');
+    // Acceder a los elementos del DOM
 
-    const nickForm=$('#nick-form');
-    const nickError=$('#nick-error');
-    const nickName=$('#nick-name');
+    const messageForm = $('#message-form');
+    const messageBox = $('#message');
+    const chat = $('#chat');
 
-    const userNames=$('#usernames');
+    const nickForm = $('#nick-form');
+    const nickError = $('#nick-error');
+    const nickName = $('#nick-name');
 
-    //eventos
+    const userNames = $('#usernames');
 
-    //enviamos un mensaje al servidor
+    // Eventos
+
+    // Enviamos un mensaje al servidor
     messageForm.submit(event => {
         event.preventDefault();
         socket.emit('enviar mensaje', messageBox.val());
         messageBox.val('');
     });
 
-    //obtenemos respuesta del servidor
-    socket.on('nuevo mensaje', function(datos){
+    // Obtenemos respuesta del servidor
+    socket.on('nuevo mensaje', function(datos) {
+        const color = getUserColor(datos.username);
 
-        let color="#f4f4f4";
-
-        if(nick==datos.username){
-            color="#9ff4c5";
-        }
-
-        chat.append(`<div class="msg-area mb-2 d-flex" style="background-color:${color}"<b>${datos.username} :</b><p class="msg">${datos.msg}</p></div>`);
+        chat.append(`<div class="msg-area mb-2 d-flex" style="background-color:${color}"><b>${datos.username} :</b><p class="msg">${datos.msg}</p></div>`);
     });
 
-
-    //Nuevo usuario:
-
+    // Nuevo usuario
     nickForm.submit(event => {
-            event.preventDefault();
+        event.preventDefault();
 
-            socket.emit('nuevo usuario', nickName.val(), datos=>{
+        socket.emit('nuevo usuario', nickName.val(), datos => {
+            if (datos) {
+                nick = nickName.val();
+                $('#nick-wrap').hide();
+                $('#content-wrap').show();
+            } else {
+                nickError.html('<div class="alert alert-danger">El usuario ya existe</div>');
+            }
 
-                if(datos){
-                    nick=nickName.val();
-                    $('#nick-wrap').hide();
-                    $('#content-wrap').show();
-                }else{
-                    nickError.html('<div class="alert alert-danger">El usuario ya existe</div>');
-                }
-
-            nickName=val('');
-
+            nickName.val('');
         });
     });
 
-    //obtener el array de usuarios conectados:
-    socket.on('nombre usuario', datos=>{
-        let html='';
-        let color='';
-        let salir='';
+    // Obtener el array de usuarios conectados
+    socket.on('nombre usuario', datos => {
+        let html = '';
+        let salir = '';
 
-        for(let i=0; i<datos.length; i++){
-            if(nick==datos[i]){
-                color="#027f43"
-                salir='<a clas="enlace-salir" href="/">Salir</a>'
-            }else{
-                color="#000"
-                salir='';
+        for (let i = 0; i < datos.length; i++) {
+            const username = datos[i];
+            const color = getUserColor(username);
+
+            if (nick == username) {
+                salir = '<a clas="enlace-salir" href="/">Salir</a>';
+            } else {
+                salir = '';
             }
 
-            html+=`<p style="color: ${color}">${datos[i]} ${salir}</p>`;
+            html += `<p style="color: ${color}">${username} ${salir}</p>`;
         }
 
         userNames.html(html);
     });
-
-
-})
+});
